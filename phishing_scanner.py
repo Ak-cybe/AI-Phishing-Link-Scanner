@@ -8,15 +8,19 @@ to detect malicious URLs.
 import re
 import time
 import sys
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 import os
-from colorama import Fore, Style, init
 
 # Initialize colorama for cross-platform colored output
-init(autoreset=True)
+try:
+    from colorama import Fore, Style, init
+    init(autoreset=True)
+except ImportError:
+    print("⚠️  colorama not installed. Run: pip install colorama")
+    sys.exit(1)
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +29,7 @@ load_dotenv()
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").lower()
 
 # VirusTotal API endpoints
 VT_API_BASE = "https://www.virustotal.com/api/v3"
@@ -51,17 +55,58 @@ class PhishingScanner:
     
     def _init_llm_client(self):
         """Initialize LLM client based on provider"""
-        if LLM_PROVIDER == "openai":
-            from openai import OpenAI
-            self.llm_client = OpenAI(api_key=OPENAI_API_KEY)
-            self.llm_model = "gpt-4"
-        elif LLM_PROVIDER == "gemini":
-            import google.generativeai as genai
-            genai.configure(api_key=GOOGLE_API_KEY)
-            self.llm_client = genai.GenerativeModel('gemini-pro')
-            self.llm_model = "gemini-pro"
-        else:
-            raise ValueError(f"❌ Unsupported LLM provider: {LLM_PROVIDER}")
+        try:
+            if LLM_PROVIDER == "openai":
+                from openai import OpenAI
+                self.llm_client = OpenAI(api_key=OPENAI_API_KEY)
+                self.llm_model = "gpt-4o-mini"
+                print(f"{Fore.GREEN}✓ OpenAI client initialized (model: {self.llm_model}){Style.RESET_ALL}")
+            elif LLM_PROVIDER == "gemini":
+                import google.generativeai as genai
+                genai.configure(api_key=GOOGLE_API_KEY)
+                
+                # Auto-detect available models (preference order)
+                available_models = [
+                    'gemini-2.5-flash',      # Latest fast model
+                    'gemini-2.5-pro',        # Latest powerful model
+                    'gemini-1.5-flash',      # Fallback 1
+                    'gemini-1.5-pro',        # Fallback 2
+                    'gemini-pro'             # Legacy fallback
+                ]
+                
+                model_to_use = None
+                for model_name in available_models:
+                    try:
+                        test_client = genai.GenerativeModel(model_name)
+                        # Quick test to verify model exists (non-destructive)
+                        # Some SDKs expect a dict/kwargs; using simple text test as best-effort check
+                        try:
+                            test_client.generate_content("health check", stream=False)
+                        except TypeError:
+                            # Fallback if signature differs
+                            test_client.generate_content(prompt="health check")
+                        model_to_use = model_name
+                        break
+                    except Exception as e:
+                        err = str(e).lower()
+                        if "404" in err or "not found" in err or "model not found" in err:
+                            continue
+                        # If it's an auth/rate-limit/network error, re-raise to surface it
+                        raise e
+                
+                if not model_to_use:
+                    raise ValueError("❌ No compatible Gemini model found. Please check your API key or available models.")
+                
+                self.llm_client = genai.GenerativeModel(model_to_use)
+                self.llm_model = model_to_use
+                print(f"{Fore.GREEN}✓ Gemini client initialized (model: {self.llm_model}){Style.RESET_ALL}")
+            else:
+                raise ValueError(f"❌ Unsupported LLM provider: {LLM_PROVIDER}")
+        except ImportError as e:
+            if LLM_PROVIDER == "openai":
+                raise ImportError("❌ OpenAI library not installed. Run: pip install openai")
+            elif LLM_PROVIDER == "gemini":
+                raise ImportError("❌ Google Generative AI library not installed. Run: pip install google-generativeai")
     
     # ========== STATIC ANALYSIS ==========
     
@@ -91,7 +136,6 @@ class PhishingScanner:
         """
         parsed = urlparse(url)
         domain = parsed.netloc
-        path = parsed.path
         
         suspicious_patterns = {
             "has_ip_address": bool(re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', domain)),
@@ -151,37 +195,47 @@ class PhishingScanner:
         print(f"{Fore.BLUE}[VirusTotal] Submitting URL for analysis...{Style.RESET_ALL}")
         
         try:
-            # Step 1: Submit URL for scanning
+            # Step 1: Submit URL for scanning (FIXED: correct Content-Type)
             headers = {
                 "accept": "application/json",
-                "x-apikey": VIRUSTOTAL_API_KEY,
-                "content-type": "application/x-www-form-urlencoded"
+                "x-apikey": VIRUSTOTAL_API_KEY
             }
             
+            # Use form data, not JSON
             submit_response = requests.post(
                 f"{VT_API_BASE}/urls",
                 headers=headers,
-                data={"url": url},
-                timeout=10
+                data={"url": url},  # Form data, not JSON
+                timeout=15
             )
             
-            if submit_response.status_code != 200:
+            if submit_response.status_code == 401:
                 return {
-                    "error": f"VT API error: {submit_response.status_code}",
+                    "error": "Invalid VirusTotal API key. Please check your .env file.",
+                    "available": False
+                }
+            elif submit_response.status_code == 429:
+                return {
+                    "error": "VirusTotal rate limit exceeded. Try again in 1 minute.",
+                    "available": False
+                }
+            elif submit_response.status_code != 200:
+                return {
+                    "error": f"VT API error: {submit_response.status_code} - {submit_response.text[:100]}",
                     "available": False
                 }
             
             analysis_id = submit_response.json()["data"]["id"]
             
-            # Step 2: Wait for analysis to complete (with timeout)
-            print(f"{Fore.BLUE}[VirusTotal] Waiting for analysis (ID: {analysis_id[:20]}...)...{Style.RESET_ALL}")
-            time.sleep(15)  # VirusTotal typically takes 10-20 seconds
+            # Step 2: Wait for analysis to complete
+            print(f"{Fore.BLUE}[VirusTotal] Waiting for analysis (15 seconds)...{Style.RESET_ALL}")
+            time.sleep(15)  # VirusTotal needs time to process
             
             # Step 3: Retrieve analysis results
             analysis_response = requests.get(
                 f"{VT_API_BASE}/analyses/{analysis_id}",
                 headers=headers,
-                timeout=10
+                timeout=15
             )
             
             if analysis_response.status_code != 200:
@@ -203,6 +257,11 @@ class PhishingScanner:
                 "total_engines": sum(stats.values()) if stats else 0
             }
             
+        except requests.exceptions.Timeout:
+            return {
+                "error": "VirusTotal request timed out. Try again later.",
+                "available": False
+            }
         except requests.exceptions.RequestException as e:
             return {
                 "error": f"Network error: {str(e)}",
@@ -487,6 +546,9 @@ def main():
         print(f"{Fore.RED}❌ Configuration Error: {e}{Style.RESET_ALL}")
         print(f"\n{Fore.YELLOW}Please ensure your .env file is configured correctly.{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}See .env.example for template.{Style.RESET_ALL}")
+    except ImportError as e:
+        print(f"{Fore.RED}❌ Import Error: {e}{Style.RESET_ALL}")
+        print(f"\n{Fore.YELLOW}Install missing dependencies: pip install -r requirements.txt{Style.RESET_ALL}")
     except Exception as e:
         print(f"{Fore.RED}❌ Unexpected Error: {e}{Style.RESET_ALL}")
         import traceback
