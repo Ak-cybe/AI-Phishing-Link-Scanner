@@ -18,7 +18,7 @@ A comprehensive Python-based phishing detection tool that combines **static anal
 - [Usage](#-usage)
 - [Detection Methods](#-detection-methods)
 - [Example Outputs](#-example-outputs)
-- [API Rate Limits](#-api-rate-limets)
+- [API Rate Limits](#-api-rate-limits)
 - [Troubleshooting](#-troubleshooting)
 - [Security Considerations](#-security-considerations)
 - [Contributing](#-contributing)
