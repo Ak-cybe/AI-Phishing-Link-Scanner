@@ -14,11 +14,11 @@ A comprehensive Python-based phishing detection tool that combines **static anal
 - [How It Works](#-how-it-works)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
-- [Configuration](#-configuration)
+- [Configuration Setup](#-configuration-setup)
 - [Usage](#-usage)
 - [Detection Methods](#-detection-methods)
 - [Example Outputs](#-example-outputs)
-- [API Rate Limits](#-api-rate-limits)
+- [API Rate Limits](#-api-rate-limets)
 - [Troubleshooting](#-troubleshooting)
 - [Security Considerations](#-security-considerations)
 - [Contributing](#-contributing)
@@ -63,19 +63,19 @@ A comprehensive Python-based phishing detection tool that combines **static anal
 
 ```text
 ┌─────────────────┐
-│    Input URL    │
+│   Input URL     │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────────────────────────────────┐
-│          STEP 1: URL Validation             │
+│           STEP 1: URL Validation            │
 │  → Regex pattern matching                   │
 │  → Structure verification                   │
 └────────┬────────────────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────────────────┐
-│          STEP 2: Static Analysis            │
+│           STEP 2: Static Analysis          │
 │  → Typosquatting detection                  │
 │  → Suspicious keyword scanning              │
 │  → Domain/subdomain analysis                │
@@ -84,7 +84,7 @@ A comprehensive Python-based phishing detection tool that combines **static anal
          │
          ▼
 ┌─────────────────────────────────────────────┐
-│      STEP 3: VirusTotal Reputation Check    │
+│       STEP 3: VirusTotal Reputation Check    │
 │  → Submit URL to VT API                     │
 │  → Wait for analysis completion             │
 │  → Retrieve malicious/suspicious votes      │
@@ -92,7 +92,7 @@ A comprehensive Python-based phishing detection tool that combines **static anal
          │
          ▼
 ┌─────────────────────────────────────────────┐
-│       STEP 4: LLM Semantic Analysis         │
+│        STEP 4: LLM Semantic Analysis        │
 │  → Send URL + static results to AI          │
 │  → Contextual pattern recognition           │
 │  → Generate phishing verdict                │
@@ -103,9 +103,9 @@ A comprehensive Python-based phishing detection tool that combines **static anal
 ┌─────────────────────────────────────────────┐
 │              FINAL VERDICT                  │
 │  → Weighted risk calculation                │
-│     - Static: 30%                           │
-│     - VirusTotal: 40%                       │
-│     - LLM Analysis: 30%                     │
+│      - Static: 30%                          │
+│      - VirusTotal: 40%                      │
+│      - LLM Analysis: 30%                    │
 │  → Risk Level: LOW / MEDIUM / HIGH          │
 │  → Recommendation                           │
 └─────────────────────────────────────────────┘
@@ -139,7 +139,7 @@ A comprehensive Python-based phishing detection tool that combines **static anal
 Option A: Clone from GitHub
 
 ```bash
-git clone https://github.com/Ak-cybe/AI-Phishing-Link-Scanner.git
+git clone [https://github.com/Ak-cybe/AI-Phishing-Link-Scanner.git](https://github.com/Ak-cybe/AI-Phishing-Link-Scanner.git)
 cd AI-Phishing-Link-Scanner
 ```
 
@@ -171,7 +171,7 @@ Activate virtual environment:
 
 ### Step 3: Install Dependencies
 
-If requirements.txt exists:
+If `requirements.txt` exists:
 
 ```bash
 pip install -r requirements.txt
@@ -199,21 +199,53 @@ You should see:
 
 -----
 
-## ⚙️ Configuration
+## ⚙️ Configuration Setup
 
-### Step 1: Create `.env` File
+### Environment Variables (`.env` file)
 
-Copy the example file:
+To run the project, you need to set up your environment variables. Create a file named `.env` in the root directory of your project and add your necessary variables (like API keys, etc.).
 
-```bash
-copy .env.example .env
-```
+Use one of the following commands to edit the file based on your operating system:
 
-Or create manually:
+**For Windows:**
 
 ```bash
 notepad .env
 ```
+
+**For Linux/macOS:**
+
+```bash
+nano .env
+```
+
+### ✅ Verify Installation
+
+#### 🐍 Python Version Check
+
+Ensure you are using a supported Python version (3.8 to 3.12).
+
+```bash
+python --version
+```
+
+#### 📦 Check Installed Packages
+
+Verify that all required packages are installed with the correct minimum versions.
+
+```bash
+pip list
+```
+
+**Expected Installed Dependencies:**
+
+| Package | Expected Version | Status |
+| :--- | :--- | :--- |
+| `requests` | 2.31.0 | ✅ |
+| `python-dotenv` | 1.0.0 | ✅ |
+| `colorama` | 0.4.6 | ✅ |
+| `openai` | 1.12.0 | ✅ |
+| `google-generativeai` | 0.3.2 | ✅ |
 
 ### Step 2: Add Your API Keys
 
@@ -271,13 +303,13 @@ Then enter URL when prompted:
 
 ```text
 Enter URL to scan (or 'quit' to exit):
-> https://example.com
+> [https://example.com](https://example.com)
 ```
 
 ### Command-Line Mode
 
 ```bash
-python phishing_scanner.py "https://example.com"
+python phishing_scanner.py "[https://example.com](https://example.com)"
 ```
 
 -----
@@ -334,7 +366,7 @@ The AI analyzes:
 ### Example 1: Safe URL
 
 ```text
-$ python phishing_scanner.py "https://www.google.com"
+$ python phishing_scanner.py "[https://www.google.com](https://www.google.com)"
 ======================================================================
 🔍 PHISHING LINK SCANNER
 
@@ -352,7 +384,7 @@ $ python phishing_scanner.py "https://www.google.com"
 ======================================================================
 📊 SCAN REPORT
 
-URL: https://www.google.com
+URL: [https://www.google.com](https://www.google.com)
 
 ▶ STATIC ANALYSIS
 Risk Score: 0/100
@@ -383,7 +415,7 @@ Recommendation: URL appears legitimate, but always verify sender authenticity.
 ### Example 2: Phishing URL
 
 ```text
-$ python phishing_scanner.py "http://amaz0n-security-update.com/verify-account"
+$ python phishing_scanner.py "[http://amaz0n-security-update.com/verify-account](http://amaz0n-security-update.com/verify-account)"
 ======================================================================
 🔍 PHISHING LINK SCANNER
 
@@ -401,7 +433,7 @@ $ python phishing_scanner.py "http://amaz0n-security-update.com/verify-account"
 ======================================================================
 📊 SCAN REPORT
 
-URL: http://amaz0n-security-update.com/verify-account
+URL: [http://amaz0n-security-update.com/verify-account](http://amaz0n-security-update.com/verify-account)
 
 ▶ STATIC ANALYSIS
 Risk Score: 75/100
@@ -580,3 +612,5 @@ For issues, questions, or suggestions:
 -----
 
 Made with ❤️ for cybersecurity awareness
+
+```
