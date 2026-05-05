@@ -607,7 +607,7 @@ For issues, questions, or suggestions:
 
   - 🐛 **Report bugs**: [GitHub Issues](https://www.google.com/search?q=https://github.com/Ak-cybe/AI-Phishing-Link-Scanner/issues)
   - 💬 **Discussions**: [GitHub Discussions](https://www.google.com/search?q=https://github.com/Ak-cybe/AI-Phishing-Link-Scanner/discussions)
-  - 📧 **Email**: singhak18245@gmail.com
+
 
 -----
 
